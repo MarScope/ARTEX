@@ -1,0 +1,43 @@
+{
+  "_comment": "Agentic Adversary Readiness: service policy tripwire (control XC-SP-01). Denies harness User-Agents, canary probe paths and source map / environment file requests, then allows everything else. These markers are trivially changed by an operator: this is an early-warning signal and hunt source, not the control. Review the path list against your application first. Reference template for POST /api/config/namespaces/{ns}/service_policys.",
+  "metadata": { "name": "agentic-markers", "namespace": "shared" },
+  "spec": {
+    "any_server": {},
+    "rule_list": {
+      "rules": [
+        {
+          "metadata": { "name": "deny-harness-user-agents" },
+          "spec": {
+            "action": "DENY",
+            "any_client": {},
+            "headers": [
+              { "name": "User-Agent", "item": { "regex_values": ["(?i).*(artex|scopeweaver|reconprobe/|azure-toolkit/|authorized-pentest).*"] } }
+            ],
+            "waf_action": { "none": {} }
+          }
+        },
+        {
+          "metadata": { "name": "deny-canary-and-config-probes" },
+          "spec": {
+            "action": "DENY",
+            "any_client": {},
+            "path": { "regex_values": ["(?i)^/zzz-nonexistent.*", "(?i).*nonexistent-xyz.*", "(?i).*\\.(js|css)\\.map$", "(?i)^/\\.env$", "(?i)^/\\.git/.*"] },
+            "waf_action": { "none": {} }
+          }
+        },
+        {
+          "metadata": { "name": "deny-soar-blocklist" },
+          "spec": {
+            "action": "DENY",
+            "ip_prefix_set": { "ref": [ { "namespace": "shared", "name": "soar-blocklist" } ] },
+            "waf_action": { "none": {} }
+          }
+        },
+        {
+          "metadata": { "name": "allow-rest" },
+          "spec": { "action": "ALLOW", "any_client": {}, "waf_action": { "none": {} } }
+        }
+      ]
+    }
+  }
+}

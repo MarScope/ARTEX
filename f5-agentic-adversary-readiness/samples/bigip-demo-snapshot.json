@@ -1,0 +1,499 @@
+{
+ "platform": "bigip",
+ "target": "demo-bigip.example.com (synthetic)",
+ "collected_at": "2026-11-17T18:00:00Z",
+ "data": {
+  "/mgmt/tm/sys/version": {
+   "entries": {
+    "https://localhost/mgmt/tm/sys/version/0": {
+     "nestedStats": {
+      "entries": {
+       "Version": {
+        "description": "17.1.2"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/mgmt/tm/sys/provision": {
+   "items": [
+    {
+     "name": "ltm",
+     "level": "nominal"
+    },
+    {
+     "name": "asm",
+     "level": "nominal"
+    },
+    {
+     "name": "apm",
+     "level": "nominal"
+    },
+    {
+     "name": "afm",
+     "level": "none"
+    }
+   ]
+  },
+  "/mgmt/tm/sys/httpd": {
+   "allow": [
+    "10.20.0.0/24"
+   ],
+   "authPamIdleTimeout": 1200
+  },
+  "/mgmt/tm/sys/sshd": {
+   "allow": [
+    "ALL"
+   ]
+  },
+  "/mgmt/tm/sys/syslog": {
+   "remoteServers": [
+    {
+     "name": "siem",
+     "host": "10.20.0.50",
+     "remotePort": 6514
+    }
+   ]
+  },
+  "/mgmt/tm/auth/password-policy": {
+   "policyEnforcement": "enabled",
+   "minimumLength": 8,
+   "maxLoginFailures": 0
+  },
+  "/mgmt/tm/net/self": {
+   "items": [
+    {
+     "fullPath": "/Common/external_self",
+     "allowService": [
+      "default"
+     ]
+    },
+    {
+     "fullPath": "/Common/internal_self",
+     "allowService": "none"
+    },
+    {
+     "fullPath": "/Common/ha_self",
+     "allowService": [
+      "tcp:4353",
+      "udp:1026"
+     ]
+    }
+   ]
+  },
+  "/mgmt/tm/ltm/profile/http": {
+   "items": [
+    {
+     "fullPath": "/Common/http"
+    },
+    {
+     "fullPath": "/Common/http_xff"
+    }
+   ]
+  },
+  "/mgmt/tm/ltm/profile/client-ssl": {
+   "items": [
+    {
+     "fullPath": "/Common/cssl_modern",
+     "tmOptions": [
+      "dont-insert-empty-fragments",
+      "no-tlsv1",
+      "no-tlsv1.1"
+     ],
+     "ciphers": "none",
+     "cipherGroup": "/Common/f5-secure"
+    },
+    {
+     "fullPath": "/Common/cssl_legacy",
+     "tmOptions": [
+      "dont-insert-empty-fragments"
+     ],
+     "ciphers": "DEFAULT",
+     "cipherGroup": "none"
+    }
+   ]
+  },
+  "/mgmt/tm/ltm/virtual?expandSubcollections=true": {
+   "items": [
+    {
+     "fullPath": "/Common/vs_customer_portal",
+     "profilesReference": {
+      "items": [
+       {
+        "name": "http_xff",
+        "fullPath": "/Common/http_xff"
+       },
+       {
+        "name": "cssl_modern",
+        "fullPath": "/Common/cssl_modern"
+       },
+       {
+        "name": "websecurity",
+        "fullPath": "/Common/websecurity"
+       },
+       {
+        "name": "bot_strict",
+        "fullPath": "/Common/bot_strict"
+       },
+       {
+        "name": "dos_portal",
+        "fullPath": "/Common/dos_portal"
+       }
+      ]
+     },
+     "securityLogProfiles": [
+      "/Common/log_all_remote"
+     ],
+     "rules": [
+      "/Common/agentic_recon_markers"
+     ]
+    },
+    {
+     "fullPath": "/Common/vs_partner_api",
+     "profilesReference": {
+      "items": [
+       {
+        "name": "http",
+        "fullPath": "/Common/http"
+       },
+       {
+        "name": "cssl_modern",
+        "fullPath": "/Common/cssl_modern"
+       },
+       {
+        "name": "websecurity",
+        "fullPath": "/Common/websecurity"
+       },
+       {
+        "name": "bot_relaxed",
+        "fullPath": "/Common/bot_relaxed"
+       }
+      ]
+     },
+     "securityLogProfiles": [
+      "/Common/log_all_remote"
+     ]
+    },
+    {
+     "fullPath": "/Common/vs_legacy_hr",
+     "profilesReference": {
+      "items": [
+       {
+        "name": "http",
+        "fullPath": "/Common/http"
+       },
+       {
+        "name": "cssl_legacy",
+        "fullPath": "/Common/cssl_legacy"
+       }
+      ]
+     }
+    },
+    {
+     "fullPath": "/Common/vs_vpn",
+     "profilesReference": {
+      "items": [
+       {
+        "name": "http",
+        "fullPath": "/Common/http"
+       },
+       {
+        "name": "cssl_modern",
+        "fullPath": "/Common/cssl_modern"
+       },
+       {
+        "name": "ap_vpn",
+        "fullPath": "/Common/ap_vpn"
+       }
+      ]
+     }
+    },
+    {
+     "fullPath": "/Common/vs_old_disabled",
+     "disabled": true,
+     "profilesReference": {
+      "items": [
+       {
+        "name": "http",
+        "fullPath": "/Common/http"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "/mgmt/tm/security/bot-defense/profile": {
+   "items": [
+    {
+     "fullPath": "/Common/bot_strict",
+     "enforcementMode": "blocking",
+     "template": "strict",
+     "deviceidMode": "generate-after-access",
+     "apiAccessStrictMitigation": "enabled"
+    },
+    {
+     "fullPath": "/Common/bot_relaxed",
+     "enforcementMode": "transparent",
+     "template": "relaxed",
+     "deviceidMode": "none",
+     "apiAccessStrictMitigation": "disabled"
+    }
+   ]
+  },
+  "/mgmt/tm/security/dos/profile?expandSubcollections=true": {
+   "items": [
+    {
+     "fullPath": "/Common/dos_portal",
+     "applicationReference": {
+      "items": [
+       {
+        "stressBased": {
+         "mode": "blocking",
+         "behavioral": {
+          "dosDetection": "enabled",
+          "signatures": "enabled"
+         }
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "/mgmt/tm/security/log/profile": {
+   "items": [
+    {
+     "fullPath": "/Common/log_all_remote"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies": {
+   "items": [
+    {
+     "id": "aB3xPortalPolicy0001",
+     "name": "portal_policy",
+     "fullPath": "/Common/portal_policy",
+     "enforcementMode": "blocking",
+     "virtualServers": [
+      "/Common/vs_customer_portal"
+     ]
+    },
+    {
+     "id": "cD4yLegacyPolicy0002",
+     "name": "partner_api_policy",
+     "fullPath": "/Common/partner_api_policy",
+     "enforcementMode": "transparent",
+     "virtualServers": [
+      "/Common/vs_partner_api"
+     ]
+    }
+   ]
+  },
+  "/mgmt/tm/live-update/asm-attack-signatures/installations": {
+   "items": [
+    {
+     "status": "install-complete",
+     "addDateTime": "2026-10-28T03:10:00Z"
+    }
+   ]
+  },
+  "/mgmt/tm/apm/profile/access": {
+   "items": [
+    {
+     "fullPath": "/Common/access"
+    },
+    {
+     "fullPath": "/Common/ap_vpn",
+     "restrictToSingleClientIp": "false",
+     "secureCookie": "true",
+     "httponlyCookie": "false",
+     "inactivityTimeout": 900,
+     "maxSessionTimeout": 604800,
+     "maxInProgressSessions": 128
+    }
+   ]
+  },
+  "/mgmt/tm/apm/policy/policy-item": {
+   "items": [
+    {
+     "fullPath": "/Common/ap_vpn_act_logon_page"
+    },
+    {
+     "fullPath": "/Common/ap_vpn_act_active_directory_auth"
+    },
+    {
+     "fullPath": "/Common/ap_vpn_act_full_resource_assign"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/signature-settings": {
+   "signatureStaging": false
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/login-pages": {
+   "items": [
+    {
+     "id": "1"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/brute-force-attack-preventions": {
+   "items": [
+    {
+     "id": "1"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/session-tracking": {
+   "sessionTrackingConfiguration": {
+    "enableSessionAwareness": true
+   }
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/data-guard": {
+   "enabled": true
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/ip-intelligence": {
+   "enabled": true
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/blocking-settings/violations": {
+   "items": [
+    {
+     "description": "Threat Campaign detected",
+     "block": true,
+     "alarm": true
+    },
+    {
+     "description": "Evasion technique detected",
+     "block": true,
+     "alarm": true
+    },
+    {
+     "description": "HTTP protocol compliance failed",
+     "block": true,
+     "alarm": true
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/signature-sets": {
+   "items": [
+    {
+     "block": true,
+     "alarm": true,
+     "learn": true
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/filetypes": {
+   "items": [
+    {
+     "name": "*",
+     "allowed": true
+    },
+    {
+     "name": "map",
+     "allowed": false
+    },
+    {
+     "name": "env",
+     "allowed": false
+    },
+    {
+     "name": "bak",
+     "allowed": false
+    },
+    {
+     "name": "git",
+     "allowed": false
+    },
+    {
+     "name": "sql",
+     "allowed": false
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/open-api-files": {
+   "items": []
+  },
+  "/mgmt/tm/asm/policies/aB3xPortalPolicy0001/json-profiles": {
+   "items": [
+    {
+     "name": "Default"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/signature-settings": {
+   "signatureStaging": true
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/login-pages": {
+   "items": []
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/brute-force-attack-preventions": {
+   "items": []
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/session-tracking": {
+   "sessionTrackingConfiguration": {
+    "enableSessionAwareness": false
+   }
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/data-guard": {
+   "enabled": false
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/ip-intelligence": {
+   "enabled": false
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/blocking-settings/violations": {
+   "items": [
+    {
+     "description": "Threat Campaign detected",
+     "block": false,
+     "alarm": true
+    },
+    {
+     "description": "Evasion technique detected",
+     "block": true,
+     "alarm": true
+    },
+    {
+     "description": "HTTP protocol compliance failed",
+     "block": false,
+     "alarm": true
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/signature-sets": {
+   "items": [
+    {
+     "block": true,
+     "alarm": true,
+     "learn": true
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/filetypes": {
+   "items": [
+    {
+     "name": "*",
+     "allowed": true
+    },
+    {
+     "name": "bak",
+     "allowed": false
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/open-api-files": {
+   "items": [
+    {
+     "id": "1"
+    }
+   ]
+  },
+  "/mgmt/tm/asm/policies/cD4yLegacyPolicy0002/json-profiles": {
+   "items": [
+    {
+     "name": "Default"
+    }
+   ]
+  }
+ }
+}

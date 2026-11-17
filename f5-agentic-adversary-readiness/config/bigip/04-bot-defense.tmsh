@@ -1,0 +1,30 @@
+# Agentic Adversary Readiness: Bot Defense and behavioral DoS (controls BIP-BOT-01..05, BIP-DOS-01)
+# Reference template. Validate in a lab; start a new application on 'balanced', then move auth flows to 'strict'.
+
+create security bot-defense profile bot_agentic_strict {
+    template strict
+    enforcement-mode blocking
+    deviceid-mode generate-after-access
+    api-access-strict-mitigation enabled
+    dos-attack-strict-mitigation enabled
+    signature-staging-upon-update disabled
+    perform-challenge-in-transparent disabled
+    browser-mitigation-action block
+}
+
+# Behavioral DoS: reacts to a change in traffic shape, not a fixed request rate.
+create security dos profile dos_agentic {
+    application add {
+        dos_agentic {
+            stress-based {
+                mode blocking
+                behavioral { dos-detection enabled signatures enabled mitigation-mode standard }
+            }
+            tps-based { mode off }
+            bot-signatures { check enabled }
+        }
+    }
+}
+
+# Attach to each internet-facing HTTP virtual server
+modify ltm virtual vs_customer_portal profiles add { bot_agentic_strict dos_agentic }

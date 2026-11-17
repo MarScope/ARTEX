@@ -1,0 +1,51 @@
+# Agentic Adversary Readiness: AFM (controls BIP-AFM-01..03, BIP-LOG-01)
+# Reference template. Category names differ between TMOS versions: run
+#   list security ip-intelligence blacklist-category
+# and adjust. Validate in a lab.
+
+# BIP-AFM-02: IP Intelligence with a feed list your SOAR can write to.
+# The feed is a plain text file of "ip,mask,whitelist|blacklist,category" lines served from an internal host.
+create security ip-intelligence feed-list soar_blocklist {
+    feeds add {
+        soar { default-blacklist-category additional default-list-type blacklist
+               poll { url https://soar.internal.example.com/feeds/f5-block.txt interval 60 } }
+    }
+}
+create security ip-intelligence policy ipi_agentic {
+    default-action accept
+    default-log-blacklist-hit-only yes
+    blacklist-categories add {
+        tor_proxies     { action drop log-blacklist-hit-only yes }
+        proxy           { action drop log-blacklist-hit-only yes }
+        scanners        { action drop log-blacklist-hit-only yes }
+        web_attacks     { action drop log-blacklist-hit-only yes }
+        botnets         { action drop log-blacklist-hit-only yes }
+        additional      { action drop log-blacklist-hit-only yes }
+    }
+    feed-lists add { soar_blocklist }
+}
+modify security ip-intelligence global-policy ip-intelligence-policy ipi_agentic
+
+# BIP-AFM-01: default-deny policy, enforced globally, permitting only published services.
+create security firewall policy fw_agentic_edge {
+    rules add {
+        allow_web   { action accept ip-protocol tcp destination { ports add { 443 80 } } log yes place-before last }
+        deny_rest   { action drop log yes place-after allow_web }
+    }
+}
+modify security firewall global-rules enforced-policy fw_agentic_edge
+
+# BIP-AFM-03: management port rules (in addition to httpd/sshd allow lists)
+modify security firewall management-ip-rules rules add {
+    allow_admin { action accept ip-protocol tcp source { addresses add { 10.20.0.0/24 } } destination { ports add { 443 22 } } log yes }
+    deny_all    { action drop log yes place-after allow_admin }
+}
+
+# BIP-LOG-01: remote security logging. Assumes a log publisher named siem_publisher already exists.
+create security log profile log_agentic {
+    application add { log_agentic { filter add { request-type { values add { all } } } remote-storage remote servers add { 10.20.0.50:6514 } } }
+    bot-defense add { log_agentic { filter { log-illegal-requests enabled log-challenged-requests enabled log-bot-signature-matched-requests enabled } remote-publisher siem_publisher } }
+    network add { log_agentic { filter { log-acl-match-drop enabled log-acl-match-reject enabled log-ip-errors enabled } publisher siem_publisher } }
+    ip-intelligence { log-publisher siem_publisher }
+}
+modify ltm virtual vs_customer_portal security-log-profiles add { log_agentic }

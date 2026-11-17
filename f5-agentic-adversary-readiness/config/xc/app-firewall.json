@@ -1,0 +1,24 @@
+{
+  "_comment": "Agentic Adversary Readiness: App Firewall (controls XC-WAF-02..04). Reference template for POST /api/config/namespaces/{ns}/app_firewalls. Validate in a non-production namespace.",
+  "metadata": { "name": "waf-agentic-blocking", "namespace": "shared" },
+  "spec": {
+    "blocking": {},
+    "detection_settings": {
+      "signature_selection_setting": {
+        "default_attack_type_settings": {},
+        "high_medium_accuracy_signatures": {}
+      },
+      "enable_suppression": {},
+      "enable_threat_campaigns": {},
+      "default_violation_settings": {},
+      "bot_protection_setting": {
+        "malicious_bot_action": "BLOCK",
+        "suspicious_bot_action": "BLOCK",
+        "good_bot_action": "REPORT"
+      }
+    },
+    "allow_all_response_codes": {},
+    "default_anonymization": {},
+    "use_default_blocking_page": {}
+  }
+}

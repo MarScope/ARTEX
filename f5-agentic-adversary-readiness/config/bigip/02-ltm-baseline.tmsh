@@ -1,0 +1,18 @@
+# Agentic Adversary Readiness: LTM baseline (control BIP-TLS-01)
+# Reference template. Validate in a lab.
+
+# Client SSL: TLS 1.2+ only, using the F5-maintained secure cipher group.
+create ltm profile client-ssl cssl_agentic_baseline {
+    defaults-from clientssl
+    options { dont-insert-empty-fragments no-tlsv1 no-tlsv1.1 no-sslv3 no-dtlsv1 }
+    cipher-group f5-secure
+    ciphers none
+}
+
+# HTTP profile: do not disclose the server header; enforce RFC compliance so malformed tool traffic is rejected.
+create ltm profile http http_agentic_baseline {
+    defaults-from http
+    server-agent-name none
+    enforcement { rfc-compliance enabled unknown-method reject max-header-count 64 max-header-size 32768 }
+    hsts { mode enabled maximum-age 31536000 include-subdomains enabled }
+}

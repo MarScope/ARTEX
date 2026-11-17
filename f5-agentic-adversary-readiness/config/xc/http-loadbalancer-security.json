@@ -1,0 +1,82 @@
+{
+  "_comment": "Agentic Adversary Readiness: security-relevant fields of an HTTP load balancer spec (controls XC-WAF-01, XC-BOT-01, XC-MUD-01, XC-RL-01, XC-REP-*, XC-DDOS-01, XC-API-*, XC-DATA-01, XC-SP-01, XC-TLS-*). This is a fragment to merge into an existing object, not a complete load balancer. Each block is one choice of a oneof; remove the opposite 'disable_*' key when you add the 'enable_*' key. Validate in a non-production namespace.",
+  "spec": {
+    "https_auto_cert": {
+      "http_redirect": true,
+      "add_hsts": true,
+      "tls_config": { "default_security": {} }
+    },
+    "app_firewall": { "namespace": "shared", "name": "waf-agentic-blocking" },
+    "bot_defense": {
+      "regional_endpoint": "US",
+      "policy": {
+        "protected_app_endpoints": [
+          {
+            "metadata": { "name": "login" },
+            "http_methods": ["METHOD_POST"],
+            "path": { "prefix": "/api/login" },
+            "flow_label": { "authentication": { "login": {} } },
+            "mitigation": { "block": { "status": "Forbidden", "body": "Request blocked." } },
+            "web": {}
+          },
+          {
+            "metadata": { "name": "password-reset" },
+            "http_methods": ["METHOD_POST"],
+            "path": { "prefix": "/api/forgot_password" },
+            "flow_label": { "authentication": { "password_reset": {} } },
+            "mitigation": { "block": { "status": "Forbidden", "body": "Request blocked." } },
+            "web": {}
+          }
+        ],
+        "js_insert_all_pages": { "javascript_location": "AFTER_HEAD" },
+        "js_download_path": "/common.js"
+      }
+    },
+    "enable_malicious_user_detection": {},
+    "enable_challenge": {
+      "default_js_challenge_parameters": {},
+      "default_captcha_challenge_parameters": {},
+      "default_mitigation_settings": {}
+    },
+    "rate_limit": {
+      "rate_limiter": { "total_number": 120, "unit": "MINUTE", "burst_multiplier": 2 },
+      "no_ip_allowed_list": {},
+      "no_policies": {}
+    },
+    "enable_ip_reputation": {
+      "ip_threat_categories": ["TOR_PROXY", "PROXY", "SCANNERS", "WEB_ATTACKS", "BOTNETS", "SPAM_SOURCES", "NETWORK"]
+    },
+    "enable_threat_mesh": {},
+    "l7_ddos_action_default": {},
+    "enable_api_discovery": { "enable_learn_from_redirect_traffic": {} },
+    "api_specification": {
+      "api_definition": { "namespace": "retail", "name": "retail-v2" },
+      "validation_all_spec_endpoints": {
+        "validation_mode": {
+          "validation_mode_active": {
+            "request_validation_properties": ["PROPERTY_QUERY_PARAMETERS", "PROPERTY_PATH_PARAMETERS", "PROPERTY_CONTENT_TYPE", "PROPERTY_HTTP_BODY"],
+            "enforcement_block": {}
+          }
+        },
+        "fall_through_mode": { "fall_through_mode_custom": { "open_api_validation_rules": [ { "metadata": { "name": "block-undeclared" }, "action_block": {}, "base_path": "/api" } ] } }
+      }
+    },
+    "jwt_validation": {
+      "target": { "base_paths": { "base_paths": ["/api"] } },
+      "token_location": { "bearer_token": {} },
+      "action": { "block": {} },
+      "jwks_config": { "cleartext": "string:///<base64 JWKS>" },
+      "reserved_claims": {
+        "issuer": "https://idp.example.com/",
+        "audience": { "audiences": ["retail-api"] },
+        "validate_period_enable": {}
+      }
+    },
+    "data_guard_rules": [
+      { "metadata": { "name": "customer-records" }, "apply_data_guard": {}, "any_domain": {}, "path": { "prefix": "/api/customers" } }
+    ],
+    "active_service_policies": {
+      "policies": [ { "namespace": "shared", "name": "agentic-markers" } ]
+    }
+  }
+}

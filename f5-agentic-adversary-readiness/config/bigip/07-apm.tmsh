@@ -1,0 +1,28 @@
+# Agentic Adversary Readiness: APM (controls BIP-APM-01..05)
+# Reference template. Validate in a lab.
+
+# BIP-APM-02..04: session binding, lifetime and logon throttling on the access profile
+modify apm profile access ap_vpn {
+    restrict-to-single-client-ip true
+    secure-cookie true
+    httponly-cookie true
+    inactivity-timeout 900
+    max-session-timeout 43200
+    max-in-progress-sessions 32
+    max-concurrent-sessions 2
+    min-failure-delay 2
+    max-failure-delay 5
+}
+
+# BIP-APM-01: the second factor lives in the per-session policy (Visual Policy Editor), not in tmsh one-liners.
+# Minimum acceptable order of preference:
+#   1. On-Demand / machine certificate check, or SAML/OIDC to an IdP enforcing FIDO2
+#   2. RADIUS / OTP push after the AD or LDAP password check
+# Also: add a "Client OS / posture" branch, and deny on fallback. Name policy items descriptively
+# (for example act_radius_mfa) so that the validator's name-based heuristic can find them.
+
+# BIP-APM-05: per-request policy for continuous authorization, attached to the access virtual server
+modify ltm virtual vs_vpn per-flow-request-access-policy prp_continuous_authz
+
+# After any access policy change:
+modify apm profile access ap_vpn generation-action increment

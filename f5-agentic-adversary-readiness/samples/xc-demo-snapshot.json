@@ -1,0 +1,153 @@
+{
+ "platform": "xc",
+ "target": "demo-tenant.console.ves.volterra.io (synthetic)",
+ "collected_at": "2026-11-17T18:00:00Z",
+ "data": {
+  "namespaces": [
+   "retail",
+   "partners"
+  ],
+  "http_loadbalancers": {
+   "retail/www": {
+    "spec": {
+     "https_auto_cert": {
+      "http_redirect": true,
+      "add_hsts": true,
+      "tls_config": {
+       "default_security": {}
+      }
+     },
+     "app_firewall": {
+      "namespace": "shared",
+      "name": "waf-blocking"
+     },
+     "bot_defense": {
+      "policy": {}
+     },
+     "enable_malicious_user_detection": {},
+     "enable_challenge": {},
+     "rate_limit": {},
+     "enable_ip_reputation": {
+      "ip_threat_categories": [
+       "TOR_PROXY",
+       "PROXY",
+       "SCANNERS",
+       "BOTNETS",
+       "WEB_ATTACKS"
+      ]
+     },
+     "enable_threat_mesh": {},
+     "l7_ddos_action_default": {},
+     "enable_api_discovery": {},
+     "disable_api_definition": {},
+     "data_guard_rules": [
+      {
+       "metadata": {
+        "name": "all"
+       }
+      }
+     ],
+     "active_service_policies": {
+      "policies": [
+       {
+        "name": "agentic-markers"
+       }
+      ]
+     }
+    }
+   },
+   "retail/api": {
+    "spec": {
+     "https": {
+      "http_redirect": true,
+      "add_hsts": false,
+      "tls_cert_params": {
+       "tls_config": {
+        "default_security": {}
+       }
+      }
+     },
+     "app_firewall": {
+      "namespace": "shared",
+      "name": "waf-blocking"
+     },
+     "js_challenge": {},
+     "enable_malicious_user_detection": {},
+     "api_rate_limit": {},
+     "enable_ip_reputation": {
+      "ip_threat_categories": [
+       "BOTNETS"
+      ]
+     },
+     "disable_threat_mesh": {},
+     "l7_ddos_action_default": {},
+     "enable_api_discovery": {},
+     "api_specification": {
+      "api_definition": {
+       "name": "retail-v2"
+      },
+      "validation_disabled": {}
+     },
+     "service_policies_from_namespace": {}
+    }
+   },
+   "partners/supplier-portal": {
+    "spec": {
+     "https": {
+      "http_redirect": false,
+      "tls_parameters": {
+       "tls_config": {
+        "low_security": {}
+       }
+      }
+     },
+     "app_firewall": {
+      "namespace": "partners",
+      "name": "waf-monitor"
+     },
+     "no_challenge": {},
+     "disable_malicious_user_detection": {},
+     "disable_rate_limit": {},
+     "disable_ip_reputation": {},
+     "disable_threat_mesh": {},
+     "l7_ddos_action_none": {},
+     "disable_api_discovery": {},
+     "disable_api_definition": {},
+     "no_service_policies": {}
+    }
+   }
+  },
+  "app_firewalls": {
+   "shared/waf-blocking": {
+    "spec": {
+     "blocking": {},
+     "default_detection_settings": {},
+     "default_bot_setting": {}
+    }
+   },
+   "partners/waf-monitor": {
+    "spec": {
+     "monitoring": {},
+     "detection_settings": {
+      "disable_threat_campaigns": {},
+      "signature_selection_setting": {
+       "only_high_accuracy_signatures": {}
+      }
+     },
+     "bot_protection_setting": {
+      "malicious_bot_action": "REPORT",
+      "suspicious_bot_action": "IGNORE"
+     }
+    }
+   }
+  },
+  "global_log_receivers": {
+   "shared": {
+    "items": []
+   },
+   "system": {
+    "_error": "HTTP 403"
+   }
+  }
+ }
+}

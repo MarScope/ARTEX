@@ -1,0 +1,1152 @@
+{
+ "schema": 1,
+ "name": "F5 Agentic Adversary Readiness control catalog",
+ "version": "0.1.0",
+ "ttps": {
+  "R1": "Low-and-slow recon: directory fuzzing (500+ requests), crawling and vulnerability scanning with wrapped tools (nuclei, httpx, katana, ffuf, dalfox, nmap) paced at 2-20 req/s per host",
+  "R2": "Client-side intel harvesting: source maps, runtime config (/env.js, /assets/config.json), OpenAPI docs, and a not-found canary path before guessing",
+  "C1": "Password spray / credential stuffing at a fixed ~1 s rhythm in 20-60 minute bursts, new User-Agent per burst",
+  "C2": "Token forgery: unsigned (alg=none) JWTs, forged OAuth callbacks, unsigned SAML assertions",
+  "C3": "Account recovery, sign-up and self-registration abuse",
+  "E1": "Web exploitation: SQLi, command injection, SSTI, XXE, SSRF, auth bypass, anonymous file upload",
+  "E2": "Web shell deployment (JSP / PHP / ASPX)",
+  "A1": "API abuse: unauthenticated internal routes, IDOR, sequential enumeration and bulk record lookups",
+  "X1": "Exfiltration of structured PII / financial records over HTTPS",
+  "P1": "Source rotation: residential proxies, Tor, SOCKS relays; blocked IPs replaced within minutes; pivot to another endpoint after a rate limit",
+  "V1": "Remote access with stolen VPN configurations and leaked credentials",
+  "M1": "Exposed management and administrative interfaces",
+  "S1": "Speed: targeting to privileged access in under three hours, many targets in parallel"
+ },
+ "domains": {
+  "exposure": "Management plane and exposure",
+  "recon": "Recon and enumeration resistance",
+  "bot": "Automation and bot defense",
+  "cred": "Credential and identity abuse",
+  "exploit": "Exploit prevention",
+  "api": "API protection",
+  "network": "Network controls and source reputation",
+  "access": "Zero trust access",
+  "data": "Data leakage",
+  "visibility": "Visibility and response"
+ },
+ "severity_weight": {
+  "critical": 10,
+  "high": 6,
+  "medium": 3,
+  "low": 1
+ },
+ "controls": [
+  {
+   "id": "BIP-MGT-01",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "M1",
+    "S1"
+   ],
+   "title": "TMOS is on a supported, current release line",
+   "recommendation": "Run a release line that still receives security fixes (catalog default: major version >= 17) and apply the latest quarterly security notification fixes. Verify against K5903 before relying on the threshold.",
+   "rationale": "Agentic frameworks chain public CVEs against edge devices within hours of targeting. An unpatched ADC is the entry point, not the defense.",
+   "check": "bigip_version",
+   "params": {
+    "min_major": 17,
+    "partial_major": 16
+   },
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-MGT-02",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "M1"
+   ],
+   "title": "Configuration utility (httpd) is restricted to named management networks",
+   "recommendation": "Set `sys httpd allow` to explicit admin subnets or jump hosts. Never `All`.",
+   "rationale": "The FBI's first mitigation group is restricting device management to trusted networks. A reachable TMUI gives an agent a login page to spray and a CVE surface to probe.",
+   "check": "bigip_httpd_allow",
+   "params": {},
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-MGT-03",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "M1"
+   ],
+   "title": "SSH is restricted to named management networks",
+   "recommendation": "Set `sys sshd allow` to explicit admin subnets. Never `All`.",
+   "rationale": "Same reasoning as the configuration utility: no spray surface for management credentials.",
+   "check": "bigip_sshd_allow",
+   "params": {},
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-MGT-04",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "M1"
+   ],
+   "title": "Self IPs use port lockdown (no Allow All, no Allow Default on exposed VLANs)",
+   "recommendation": "Set `allow-service none` on data-plane self IPs, or an explicit custom list (for example tcp:4353 and udp:1026 on the HA VLAN only).",
+   "rationale": "Allow Default exposes TCP 443 and 22 on the self IP, which publishes the management plane on every VLAN the self IP lives on.",
+   "check": "bigip_self_lockdown",
+   "params": {},
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-MGT-05",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "M1",
+    "C1"
+   ],
+   "title": "Local account password policy and lockout are enforced",
+   "recommendation": "Enable `auth password-policy policy-enforcement`, minimum length >= 14, and `max-login-failures` between 3 and 10. Prefer remote auth (TACACS+/RADIUS with MFA) for administrators.",
+   "rationale": "A one-attempt-per-second spray is only stopped by lockout or by not being reachable at all.",
+   "check": "bigip_password_policy",
+   "params": {
+    "min_length": 14,
+    "max_failures": 10
+   },
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 3
+  },
+  {
+   "id": "BIP-MGT-06",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "visibility",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "S1"
+   ],
+   "title": "System logs are forwarded off-box",
+   "recommendation": "Configure remote syslog (or a log publisher to your SIEM) so audit and security events survive a compromise and can drive automated response.",
+   "rationale": "With sub-three-hour intrusions, detections that live only on the device are read after the fact.",
+   "check": "bigip_remote_syslog",
+   "params": {},
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-MGT-07",
+   "platform": "bigip",
+   "module": "base",
+   "domain": "exposure",
+   "severity": "low",
+   "confidence": "high",
+   "ttps": [
+    "M1"
+   ],
+   "title": "Configuration utility idle timeout is 20 minutes or less",
+   "recommendation": "Set `sys httpd auth-pam-idle-timeout` to 1200 seconds or less.",
+   "rationale": "Limits the value of a hijacked administrator session.",
+   "check": "bigip_idle_timeout",
+   "params": {
+    "max_seconds": 1200
+   },
+   "config_ref": "config/bigip/01-management-plane.tmsh",
+   "weight": 1
+  },
+  {
+   "id": "BIP-TLS-01",
+   "platform": "bigip",
+   "module": "ltm",
+   "domain": "exposure",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "E1"
+   ],
+   "title": "Client SSL profiles on virtual servers disable TLS 1.0 and 1.1",
+   "recommendation": "Add `no-tlsv1` and `no-tlsv1.1` to client SSL profile options (or use a cipher group that excludes them).",
+   "rationale": "Legacy protocol support is one of the first findings an automated scanner records and builds on.",
+   "check": "bigip_tls_versions",
+   "params": {},
+   "config_ref": "config/bigip/02-ltm-baseline.tmsh",
+   "weight": 3
+  },
+  {
+   "id": "BIP-LTM-01",
+   "platform": "bigip",
+   "module": "ltm",
+   "domain": "recon",
+   "severity": "medium",
+   "confidence": "heuristic",
+   "ttps": [
+    "R2",
+    "C2"
+   ],
+   "title": "Agentic recon marker iRule is attached to HTTP virtual servers",
+   "recommendation": "Attach the supplied `agentic_recon_markers` iRule (or equivalent LTM policy) to internet-facing HTTP virtual servers. It rejects alg=none JWTs, known harness User-Agents, canary probe paths and source-map requests, and logs each hit.",
+   "rationale": "These markers are free, high-signal detections of the current tooling. They are trivially changed by an operator, so treat them as an early-warning tripwire, never as the control.",
+   "check": "bigip_marker_irule",
+   "params": {
+    "name_pattern": "agentic"
+   },
+   "config_ref": "config/bigip/06-irule-agentic-recon-markers.tcl",
+   "weight": 3
+  },
+  {
+   "id": "BIP-WAF-01",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "E2"
+   ],
+   "title": "Every HTTP virtual server has an Advanced WAF policy",
+   "recommendation": "Attach a security policy to every internet-facing HTTP virtual server, including partner portals, mobile backends and legacy apps.",
+   "rationale": "Reported intrusions started at peripheral applications, not the flagship app. Coverage matters more than tuning depth on one policy.",
+   "check": "bigip_waf_coverage",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 10
+  },
+  {
+   "id": "BIP-WAF-02",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "S1"
+   ],
+   "title": "Security policies are in blocking enforcement mode",
+   "recommendation": "Set enforcement mode to Blocking on all policies attached to virtual servers.",
+   "rationale": "A transparent policy produces a log entry that a human reads after the agent has moved on.",
+   "check": "bigip_waf_blocking",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 10
+  },
+  {
+   "id": "BIP-WAF-03",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "S1"
+   ],
+   "title": "Attack signatures are enforced, not held in staging",
+   "recommendation": "Disable signature staging on internet-facing policies (or enforce all signatures whose staging period has elapsed) and do not re-stage on signature update.",
+   "rationale": "Staged signatures never block. A seven-day staging window is longer than a full agentic campaign.",
+   "check": "bigip_waf_staging",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 10
+  },
+  {
+   "id": "BIP-WAF-04",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "E1"
+   ],
+   "title": "Signature sets are assigned with Block enabled",
+   "recommendation": "Assign at minimum the Generic Detection (High/Medium Accuracy) set plus the sets for your server technologies, with Learn/Alarm/Block all enabled.",
+   "rationale": "SQL injection, command injection, SSTI and XXE are the reported initial-access classes; they are signature-detectable.",
+   "check": "bigip_waf_sigsets",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 6
+  },
+  {
+   "id": "BIP-WAF-05",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "high",
+   "confidence": "heuristic",
+   "ttps": [
+    "E1"
+   ],
+   "title": "Attack signature package is recent",
+   "recommendation": "Schedule live update for attack signatures, bot signatures and threat campaigns; install within 30 days of release.",
+   "rationale": "Agents pick up newly published exploit templates automatically; signature age is your exposure window.",
+   "check": "bigip_sig_freshness",
+   "params": {
+    "max_age_days": 45
+   },
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 6
+  },
+  {
+   "id": "BIP-WAF-06",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "cred",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "C1",
+    "C3"
+   ],
+   "title": "Brute force protection is configured with defined login pages",
+   "recommendation": "Define a login page for every authentication, recovery and registration endpoint and enable brute force protection keyed on username and device ID, not source IP alone. Detect distributed attacks and credential stuffing.",
+   "rationale": "Sprays rotate source address and User-Agent per burst. Per-IP counters see one failure per source; per-username and per-device counters see the campaign.",
+   "check": "bigip_waf_bruteforce",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 10
+  },
+  {
+   "id": "BIP-WAF-07",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "api",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "A1",
+    "P1"
+   ],
+   "title": "Session tracking is enabled",
+   "recommendation": "Enable session awareness with username tracking and device ID, and set violation-based thresholds that block the session, user or device after repeated violations.",
+   "rationale": "Lets the policy act on the actor across requests and source addresses, which is the only stable handle on a rotating agent.",
+   "check": "bigip_waf_session_tracking",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 6
+  },
+  {
+   "id": "BIP-WAF-08",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "data",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "X1"
+   ],
+   "title": "Data Guard is enabled",
+   "recommendation": "Enable Data Guard (mask or block) for card numbers, national identifiers and custom patterns relevant to the application.",
+   "rationale": "Limits what a successful injection or IDOR can carry out in responses.",
+   "check": "bigip_waf_dataguard",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 3
+  },
+  {
+   "id": "BIP-WAF-09",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "network",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "P1"
+   ],
+   "title": "IP Intelligence is enabled in the security policy",
+   "recommendation": "Enable IP Intelligence and block at minimum Anonymous Proxy, Tor Proxies, Scanners, Web Attacks and Botnets.",
+   "rationale": "Raises the cost of proxy rotation. It does not stop residential proxies, so pair it with device- and behavior-based controls.",
+   "check": "bigip_waf_ipi",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 3
+  },
+  {
+   "id": "BIP-WAF-10",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "high",
+   "confidence": "heuristic",
+   "ttps": [
+    "E1",
+    "S1"
+   ],
+   "title": "Threat Campaigns violation is set to block",
+   "recommendation": "License and enable Threat Campaigns; set the Threat Campaign violation to Alarm and Block with no staging.",
+   "rationale": "Threat campaign signatures are near-zero false positive by design and can be enforced immediately.",
+   "check": "bigip_waf_violation",
+   "params": {
+    "match": [
+     "threat campaign"
+    ]
+   },
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 6
+  },
+  {
+   "id": "BIP-WAF-11",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "exploit",
+   "severity": "medium",
+   "confidence": "heuristic",
+   "ttps": [
+    "E1"
+   ],
+   "title": "Evasion and HTTP protocol compliance violations are set to block",
+   "recommendation": "Block 'Evasion technique detected' and 'HTTP protocol compliance failed'.",
+   "rationale": "Tool-generated traffic and payload mutation by an LLM trip these checks more often than browsers do.",
+   "check": "bigip_waf_violation",
+   "params": {
+    "match": [
+     "evasion technique",
+     "http protocol compliance"
+    ]
+   },
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 3
+  },
+  {
+   "id": "BIP-WAF-12",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "recon",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R2",
+    "E2"
+   ],
+   "title": "Disallowed file types cover source maps, backups, VCS and environment files",
+   "recommendation": "Add `map`, `env`, `git`, `bak`, `old`, `config`, `sql`, `log` to disallowed file types, and remove source maps and runtime config from production.",
+   "rationale": "Reported activity read source maps and config files, then called internal API routes minutes later.",
+   "check": "bigip_waf_filetypes",
+   "params": {
+    "required": [
+     "map",
+     "env",
+     "bak"
+    ]
+   },
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 6
+  },
+  {
+   "id": "BIP-WAF-13",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "api",
+   "severity": "medium",
+   "confidence": "heuristic",
+   "ttps": [
+    "A1"
+   ],
+   "title": "API traffic is validated against a schema",
+   "recommendation": "Import the OpenAPI specification for API endpoints (or at minimum define JSON profiles) so undeclared paths, methods and parameters are rejected.",
+   "rationale": "A positive model blocks the route guessing that follows source-map analysis.",
+   "check": "bigip_waf_api_schema",
+   "params": {},
+   "config_ref": "config/bigip/03-awaf-policy.json",
+   "weight": 3
+  },
+  {
+   "id": "BIP-BOT-01",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "C1",
+    "P1"
+   ],
+   "title": "Every HTTP virtual server has a Bot Defense profile",
+   "recommendation": "Attach a Bot Defense profile to every internet-facing HTTP virtual server.",
+   "rationale": "The framework's workers are curl, python-requests, Go clients and headless tools. Client verification is the control that does not depend on request rate.",
+   "check": "bigip_bot_coverage",
+   "params": {},
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-BOT-02",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "C1",
+    "S1"
+   ],
+   "title": "Bot Defense profiles are in blocking enforcement mode",
+   "recommendation": "Set `enforcement-mode blocking`.",
+   "rationale": "Transparent mode only classifies.",
+   "check": "bigip_bot_field",
+   "params": {
+    "field": "enforcementMode",
+    "good": [
+     "blocking"
+    ]
+   },
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-BOT-03",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "C1"
+   ],
+   "title": "Bot Defense profiles use the balanced or strict template",
+   "recommendation": "Use `template strict` on authentication and high-value flows, `balanced` elsewhere. Relaxed does not verify browsers.",
+   "rationale": "The relaxed template blocks only known malicious signatures, which a per-burst User-Agent change defeats.",
+   "check": "bigip_bot_field",
+   "params": {
+    "field": "template",
+    "good": [
+     "strict",
+     "balanced"
+    ]
+   },
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-BOT-04",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "P1",
+    "C1"
+   ],
+   "title": "Device ID is generated for clients",
+   "recommendation": "Set `deviceid-mode generate-after-access` (or `generate-before-access` on login flows).",
+   "rationale": "Device ID follows the client across proxy rotation and feeds brute force protection and session tracking.",
+   "check": "bigip_bot_field",
+   "params": {
+    "field": "deviceidMode",
+    "bad": [
+     "none"
+    ]
+   },
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-BOT-05",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "A1"
+   ],
+   "title": "Strict mitigation is applied to API access",
+   "recommendation": "Set `api-access-strict-mitigation enabled` and onboard mobile apps with the Anti-Bot Mobile SDK where browsers cannot be challenged.",
+   "rationale": "API endpoints cannot run a JavaScript challenge, so they need an explicit mitigation choice instead of a silent pass.",
+   "check": "bigip_bot_field",
+   "params": {
+    "field": "apiAccessStrictMitigation",
+    "good": [
+     "enabled"
+    ]
+   },
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 3
+  },
+  {
+   "id": "BIP-DOS-01",
+   "platform": "bigip",
+   "module": "asm",
+   "domain": "bot",
+   "severity": "high",
+   "confidence": "heuristic",
+   "ttps": [
+    "R1",
+    "S1"
+   ],
+   "title": "A behavioral application DoS profile is attached to HTTP virtual servers",
+   "recommendation": "Attach a DoS profile with application security enabled, stress-based detection in blocking mode and Behavioral DoS detection with signatures enabled.",
+   "rationale": "Behavioral baselining reacts to a change in traffic shape at 2-20 req/s that fixed TPS thresholds will never reach.",
+   "check": "bigip_dos_coverage",
+   "params": {},
+   "config_ref": "config/bigip/04-bot-defense.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-AFM-01",
+   "platform": "bigip",
+   "module": "afm",
+   "domain": "network",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "M1"
+   ],
+   "title": "Network firewall policy is enforced globally or on every virtual server",
+   "recommendation": "Enforce an AFM policy at the global context or per virtual server, default-deny, permitting only the service ports each application needs.",
+   "rationale": "Removes port-scan findings (the nmap stage) and stops non-application ports from being reachable through a wildcard listener.",
+   "check": "bigip_afm_policy",
+   "params": {},
+   "config_ref": "config/bigip/05-afm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-AFM-02",
+   "platform": "bigip",
+   "module": "afm",
+   "domain": "network",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "P1"
+   ],
+   "title": "An IP Intelligence policy is applied globally or per virtual server",
+   "recommendation": "Apply an IP Intelligence policy that drops Tor, anonymous proxies, scanners and botnets, and add a feed list for your own IOC feed so SOAR can push blocks in seconds.",
+   "rationale": "Published infrastructure indicators rotate quickly. A feed list is the mechanism that lets automated response keep up; a manually edited address list is not.",
+   "check": "bigip_afm_ipi",
+   "params": {},
+   "config_ref": "config/bigip/05-afm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-AFM-03",
+   "platform": "bigip",
+   "module": "afm",
+   "domain": "exposure",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "M1"
+   ],
+   "title": "Management port firewall rules are defined",
+   "recommendation": "Define management-IP rules that permit only admin subnets to TCP 443/22 and drop everything else.",
+   "rationale": "Defense in depth behind httpd/sshd allow lists, and the only one of the three that logs the attempts.",
+   "check": "bigip_afm_mgmt_rules",
+   "params": {},
+   "config_ref": "config/bigip/05-afm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-LOG-01",
+   "platform": "bigip",
+   "module": "asm|afm",
+   "domain": "visibility",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "S1"
+   ],
+   "title": "Security logging profiles are attached to virtual servers",
+   "recommendation": "Attach a security log profile (application security: all requests or illegal requests with responses; bot defense; network firewall; DoS) that publishes to a remote high-speed log destination.",
+   "rationale": "The behavioral hunts published for ARTEX (canary path, unsigned token, spray rhythm) all run on request logs. No log profile, no hunt.",
+   "check": "bigip_log_profile_coverage",
+   "params": {},
+   "config_ref": "config/bigip/05-afm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-APM-01",
+   "platform": "bigip",
+   "module": "apm",
+   "domain": "access",
+   "severity": "critical",
+   "confidence": "heuristic",
+   "ttps": [
+    "V1",
+    "C1"
+   ],
+   "title": "Access policies include a strong second factor",
+   "recommendation": "Require phishing-resistant MFA (client certificate, FIDO2 through SAML/OIDC IdP, or at minimum OTP/RADIUS push) in every access policy that grants network access or portal access.",
+   "rationale": "Stolen VPN configurations and leaked credentials are a reported initial-access path. A password-only policy converts a leak into a session.",
+   "check": "bigip_apm_mfa",
+   "params": {
+    "markers": [
+     "otp",
+     "radius",
+     "saml",
+     "oauth",
+     "cert",
+     "duo",
+     "mfa",
+     "fido",
+     "securid",
+     "tacacs"
+    ]
+   },
+   "config_ref": "config/bigip/07-apm.tmsh",
+   "weight": 10
+  },
+  {
+   "id": "BIP-APM-02",
+   "platform": "bigip",
+   "module": "apm",
+   "domain": "access",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "V1"
+   ],
+   "title": "Access sessions are bound to the client IP and use Secure, HttpOnly cookies",
+   "recommendation": "Enable `restrict-to-single-client-ip`, `secure-cookie` and `httponly-cookie` on access profiles. Where mobile roaming makes IP binding impractical, compensate with device posture and a per-request policy.",
+   "rationale": "Stops replay of a harvested MRHSession cookie from attacker infrastructure.",
+   "check": "bigip_apm_session_binding",
+   "params": {},
+   "config_ref": "config/bigip/07-apm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "BIP-APM-03",
+   "platform": "bigip",
+   "module": "apm",
+   "domain": "access",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "V1"
+   ],
+   "title": "Access session lifetime is bounded",
+   "recommendation": "Inactivity timeout <= 900 s and maximum session timeout <= 12 hours.",
+   "rationale": "Bounds how long a stolen session stays useful.",
+   "check": "bigip_apm_timeouts",
+   "params": {
+    "max_inactivity": 900,
+    "max_session": 43200
+   },
+   "config_ref": "config/bigip/07-apm.tmsh",
+   "weight": 3
+  },
+  {
+   "id": "BIP-APM-04",
+   "platform": "bigip",
+   "module": "apm",
+   "domain": "access",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "C1"
+   ],
+   "title": "In-progress sessions per client IP are limited",
+   "recommendation": "Set `max-in-progress-sessions` per client IP to a small value (for example 32 or lower) and keep a non-zero logon failure delay.",
+   "rationale": "Throttles a spray against the logon page before an AAA lockout is reached.",
+   "check": "bigip_apm_inprogress",
+   "params": {
+    "max": 64
+   },
+   "config_ref": "config/bigip/07-apm.tmsh",
+   "weight": 3
+  },
+  {
+   "id": "BIP-APM-05",
+   "platform": "bigip",
+   "module": "apm",
+   "domain": "access",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "V1",
+    "A1"
+   ],
+   "title": "Access virtual servers enforce a per-request policy",
+   "recommendation": "Attach a per-request policy that re-evaluates authorization (group, posture, URL category, step-up) on every request rather than once at logon.",
+   "rationale": "Per-session-only access gives an attacker with one valid session the whole published surface.",
+   "check": "bigip_apm_per_request",
+   "params": {},
+   "config_ref": "config/bigip/07-apm.tmsh",
+   "weight": 6
+  },
+  {
+   "id": "XC-WAF-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "exploit",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "E2"
+   ],
+   "title": "Every HTTP load balancer has an App Firewall",
+   "recommendation": "Attach an App Firewall to every HTTP load balancer.",
+   "rationale": "Peripheral applications are the reported entry point.",
+   "check": "xc_waf_attached",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 10
+  },
+  {
+   "id": "XC-WAF-02",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "exploit",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "S1"
+   ],
+   "title": "App Firewalls are in blocking mode",
+   "recommendation": "Set enforcement mode to Blocking.",
+   "rationale": "Monitoring mode logs the intrusion; it does not interrupt it.",
+   "check": "xc_waf_blocking",
+   "params": {},
+   "config_ref": "config/xc/app-firewall.json",
+   "weight": 10
+  },
+  {
+   "id": "XC-WAF-03",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "exploit",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "E1",
+    "S1"
+   ],
+   "title": "Threat Campaigns are enabled and signature accuracy includes medium",
+   "recommendation": "Use custom detection settings only where needed; keep Threat Campaigns enabled and select High + Medium accuracy signatures at minimum.",
+   "rationale": "Threat campaigns block active exploitation patterns with very low false-positive risk.",
+   "check": "xc_waf_detection",
+   "params": {},
+   "config_ref": "config/xc/app-firewall.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-WAF-04",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "bot",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "C1"
+   ],
+   "title": "App Firewall bot signatures block malicious bots",
+   "recommendation": "Set malicious bot action to Block and suspicious bot action to Block or Report.",
+   "rationale": "Baseline automation control where Bot Defense is not licensed.",
+   "check": "xc_waf_bot_setting",
+   "params": {},
+   "config_ref": "config/xc/app-firewall.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-BOT-01",
+   "platform": "xc",
+   "module": "bot-defense",
+   "domain": "bot",
+   "severity": "critical",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "C1",
+    "C3",
+    "P1"
+   ],
+   "title": "Bot Defense protects authentication and high-value endpoints",
+   "recommendation": "Enable Bot Defense with protected endpoints for login, password reset, registration, search and any bulk-lookup API, with mitigation set to Block. A JavaScript or policy-based challenge is a partial substitute.",
+   "rationale": "Signal-based client verification is independent of source IP, User-Agent and request rate, which are the three things the framework varies.",
+   "check": "xc_bot_defense",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 10
+  },
+  {
+   "id": "XC-MUD-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "bot",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R1",
+    "P1",
+    "S1"
+   ],
+   "title": "Malicious User Detection and mitigation are enabled",
+   "recommendation": "Enable Malicious User Detection and a malicious user mitigation challenge policy (JS challenge at low, CAPTCHA at medium, temporary block at high threat level).",
+   "rationale": "Scores the actor on WAF hits, failed logins, forbidden requests and rate behavior, then escalates automatically, which is the response speed this threat requires.",
+   "check": "xc_malicious_user",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-RL-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "cred",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "C1",
+    "A1",
+    "R1"
+   ],
+   "title": "Rate limiting is configured",
+   "recommendation": "Configure rate limiting, and API rate limits on login, recovery and lookup endpoints, sized to human use (single-digit requests per minute per user on auth endpoints). Key on user identifier, not IP alone.",
+   "rationale": "Reported pacing is 2-20 requests per second and about one login attempt per second. A threshold of hundreds per second never triggers.",
+   "check": "xc_rate_limit",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-REP-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "network",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "P1"
+   ],
+   "title": "IP Reputation is enabled with proxy and scanner categories",
+   "recommendation": "Enable IP Reputation and include Tor Proxy, Proxy, Scanners, Web Attacks and Botnets.",
+   "rationale": "Raises the cost of proxy rotation; does not address residential proxies on its own.",
+   "check": "xc_ip_reputation",
+   "params": {
+    "required": [
+     "TOR_PROXY",
+     "PROXY",
+     "SCANNERS"
+    ]
+   },
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 3
+  },
+  {
+   "id": "XC-REP-02",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "network",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "P1",
+    "S1"
+   ],
+   "title": "Threat Mesh is enabled",
+   "recommendation": "Enable Threat Mesh.",
+   "rationale": "Shares attacker identification across tenants, useful when one controller is working hundreds of targets at once.",
+   "check": "xc_flag",
+   "params": {
+    "on": [
+     "enable_threat_mesh"
+    ],
+    "off": [
+     "disable_threat_mesh"
+    ]
+   },
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 3
+  },
+  {
+   "id": "XC-DDOS-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "bot",
+   "severity": "medium",
+   "confidence": "heuristic",
+   "ttps": [
+    "R1"
+   ],
+   "title": "L7 DDoS auto-mitigation is enabled",
+   "recommendation": "Enable L7 DDoS protection with automatic mitigation (block or JS challenge).",
+   "rationale": "Covers aggressive-profile scanning bursts and protects origin capacity during a campaign.",
+   "check": "xc_l7_ddos",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 3
+  },
+  {
+   "id": "XC-API-01",
+   "platform": "xc",
+   "module": "api-security",
+   "domain": "api",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "A1",
+    "R2"
+   ],
+   "title": "API Discovery is enabled",
+   "recommendation": "Enable API Discovery (and code-repository/crawler discovery where licensed) to find shadow and undocumented endpoints.",
+   "rationale": "The agent builds its own inventory of your API from source maps and traffic. You need the same inventory first.",
+   "check": "xc_flag",
+   "params": {
+    "on": [
+     "enable_api_discovery"
+    ],
+    "off": [
+     "disable_api_discovery"
+    ]
+   },
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-API-02",
+   "platform": "xc",
+   "module": "api-security",
+   "domain": "api",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "A1"
+   ],
+   "title": "API definition is attached with validation",
+   "recommendation": "Attach an API definition and enable validation (block) for all endpoints, with fall-through set to block or report for undeclared paths.",
+   "rationale": "Positive security for the API: undeclared routes discovered through source maps return an error before reaching the origin.",
+   "check": "xc_api_definition",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-API-03",
+   "platform": "xc",
+   "module": "api-security",
+   "domain": "api",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "C2",
+    "A1"
+   ],
+   "title": "API protection rules or JWT validation are configured",
+   "recommendation": "Configure JWT validation (signature, issuer, audience, expiry; reject alg=none) and API protection rules that deny unauthenticated access to non-public endpoints.",
+   "rationale": "Unsigned tokens and unauthenticated internal routes are both reported techniques.",
+   "check": "xc_api_authz",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-DATA-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "data",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "X1"
+   ],
+   "title": "Data Guard rules are configured",
+   "recommendation": "Apply Data Guard to paths that return personal or financial data, and enable sensitive data discovery.",
+   "rationale": "Limits what leaves in responses if an authorization flaw is found.",
+   "check": "xc_data_guard",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 3
+  },
+  {
+   "id": "XC-SP-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "recon",
+   "severity": "high",
+   "confidence": "high",
+   "ttps": [
+    "R2",
+    "C2",
+    "P1"
+   ],
+   "title": "Service policies are applied",
+   "recommendation": "Apply service policies (namespace or custom) that deny known harness User-Agents, canary probe paths, source-map and environment files, and that feed an IP prefix set your SOAR can update.",
+   "rationale": "Cheap tripwires for the current tooling plus the hook for automated blocking.",
+   "check": "xc_service_policies",
+   "params": {},
+   "config_ref": "config/xc/service-policy-agentic-markers.json",
+   "weight": 6
+  },
+  {
+   "id": "XC-TLS-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "exposure",
+   "severity": "medium",
+   "confidence": "high",
+   "ttps": [
+    "E1"
+   ],
+   "title": "HTTPS only, with TLS 1.2 or higher",
+   "recommendation": "Use HTTPS with HTTP redirect, and High (default) TLS security. Do not use Low security.",
+   "rationale": "Removes easy scanner findings and downgrade paths.",
+   "check": "xc_tls",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 3
+  },
+  {
+   "id": "XC-TLS-02",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "exposure",
+   "severity": "low",
+   "confidence": "high",
+   "ttps": [
+    "E1"
+   ],
+   "title": "HSTS is enabled",
+   "recommendation": "Enable the HSTS header on HTTPS load balancers.",
+   "rationale": "Baseline transport hardening.",
+   "check": "xc_hsts",
+   "params": {},
+   "config_ref": "config/xc/http-loadbalancer-security.json",
+   "weight": 1
+  },
+  {
+   "id": "XC-LOG-01",
+   "platform": "xc",
+   "module": "waap",
+   "domain": "visibility",
+   "severity": "high",
+   "confidence": "heuristic",
+   "ttps": [
+    "S1"
+   ],
+   "title": "A global log receiver streams security events to the SIEM",
+   "recommendation": "Configure a Global Log Receiver for request and security event logs to your SIEM, and alert on the behavioral patterns in the guide.",
+   "rationale": "Console-only logs cannot drive automated containment.",
+   "check": "xc_log_receiver",
+   "params": {},
+   "config_ref": "config/xc/global-log-receiver.json",
+   "weight": 6
+  }
+ ]
+}

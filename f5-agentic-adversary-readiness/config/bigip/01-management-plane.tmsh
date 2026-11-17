@@ -1,0 +1,27 @@
+# Agentic Adversary Readiness: BIG-IP management plane (controls BIP-MGT-01..07)
+# Reference template. Replace the example subnets, validate in a lab, then apply in a change window.
+# Losing management access is the failure mode here: confirm your source address is inside the allow list first.
+
+# BIP-MGT-02 / BIP-MGT-03: restrict the configuration utility and SSH to admin networks
+modify sys httpd allow replace-all-with { 10.20.0.0/255.255.255.0 }
+modify sys sshd  allow replace-all-with { 10.20.0.0/255.255.255.0 }
+
+# BIP-MGT-07: idle timeouts
+modify sys httpd auth-pam-idle-timeout 1200
+modify sys sshd inactivity-timeout 900
+modify cli global-settings idle-timeout 15
+
+# BIP-MGT-04: port lockdown. Data-plane self IPs expose nothing; the HA self IP exposes only what HA needs.
+modify net self external_self allow-service none
+modify net self internal_self allow-service none
+modify net self ha_self allow-service replace-all-with { tcp:4353 udp:1026 }
+
+# BIP-MGT-05: local account policy. Prefer remote auth with MFA for administrators.
+modify auth password-policy policy-enforcement enabled minimum-length 14 \
+    required-uppercase 1 required-lowercase 1 required-numeric 1 required-special 1 \
+    max-login-failures 5 password-memory 12 max-duration 90
+
+# BIP-MGT-06: off-box logging (use a TLS syslog destination where your SIEM supports it)
+modify sys syslog remote-servers add { siem { host 10.20.0.50 remote-port 6514 } }
+
+save sys config

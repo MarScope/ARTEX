@@ -1,0 +1,101 @@
+{
+  "_comment": "Agentic Adversary Readiness: Advanced WAF declarative policy fragment (controls BIP-WAF-02..13). Reference template: merge into your own policy, replace URLs and parameter names, validate in a lab. Requires BIG-IP 16.1 or later for the declarative policy import.",
+  "policy": {
+    "name": "agentic_baseline",
+    "template": { "name": "POLICY_TEMPLATE_RAPID_DEPLOYMENT" },
+    "applicationLanguage": "utf-8",
+    "enforcementMode": "blocking",
+    "signature-settings": {
+      "signatureStaging": false,
+      "placeSignaturesInStaging": false,
+      "minimumAccuracyForAutoAddedSignatures": "medium"
+    },
+    "policy-builder": { "learningMode": "manual" },
+    "blocking-settings": {
+      "violations": [
+        { "name": "VIOL_THREAT_CAMPAIGN", "alarm": true, "block": true },
+        { "name": "VIOL_EVASION", "alarm": true, "block": true },
+        { "name": "VIOL_HTTP_PROTOCOL", "alarm": true, "block": true },
+        { "name": "VIOL_FILETYPE", "alarm": true, "block": true },
+        { "name": "VIOL_BRUTE_FORCE", "alarm": true, "block": true },
+        { "name": "VIOL_DATA_GUARD", "alarm": true, "block": true },
+        { "name": "VIOL_BLACKLISTED_IP", "alarm": true, "block": true },
+        { "name": "VIOL_JSON_FORMAT", "alarm": true, "block": true },
+        { "name": "VIOL_XML_FORMAT", "alarm": true, "block": true }
+      ]
+    },
+    "filetypes": [
+      { "name": "*", "type": "wildcard", "allowed": true },
+      { "name": "map", "allowed": false },
+      { "name": "env", "allowed": false },
+      { "name": "git", "allowed": false },
+      { "name": "bak", "allowed": false },
+      { "name": "old", "allowed": false },
+      { "name": "config", "allowed": false },
+      { "name": "sql", "allowed": false },
+      { "name": "log", "allowed": false }
+    ],
+    "login-pages": [
+      {
+        "url": { "name": "/api/login", "method": "POST", "protocol": "https", "type": "explicit" },
+        "authenticationType": "ajax-or-json-request",
+        "usernameParameterName": "username",
+        "passwordParameterName": "password",
+        "accessValidation": { "responseHttpStatus": "200" }
+      }
+    ],
+    "brute-force-attack-preventions": [
+      {
+        "bruteForceProtectionForAllLoginPages": true,
+        "reEnableLoginAfter": 600,
+        "sourceBasedProtectionDetectionPeriod": 3600,
+        "loginAttemptsFromTheSameUser": { "enabled": true, "threshold": 5, "action": "alarm-and-captcha" },
+        "loginAttemptsFromTheSameDeviceId": { "enabled": true, "threshold": 5, "action": "alarm-and-captcha" },
+        "loginAttemptsFromTheSameIp": { "enabled": true, "threshold": 10, "action": "alarm-and-captcha" },
+        "detectionCriteria": {
+          "action": "alarm-and-captcha",
+          "detectDistributedBruteForceAttack": true,
+          "detectCredentialsStuffingAttack": true,
+          "failedLoginAttemptsRateReached": 20,
+          "credentialsStuffingMatchesReached": 20
+        }
+      }
+    ],
+    "session-tracking": {
+      "sessionTrackingConfiguration": {
+        "enableSessionAwareness": true,
+        "enableTrackingSessionHijackingByDeviceId": true,
+        "userNameSource": "all-login-pages"
+      },
+      "violationDetectionActions": { "trackViolationsAndPerformActions": true, "violationDetectionPeriod": 900 },
+      "blockAll": {
+        "period": 600,
+        "blockAllThresholdCriteria": {
+          "usernameThresholdEnabled": true, "usernameThreshold": 5,
+          "deviceIdThresholdEnabled": true, "deviceIdThreshold": 5,
+          "sessionThresholdEnabled": true, "sessionThreshold": 5,
+          "ipThresholdEnabled": true, "ipThreshold": 20
+        }
+      }
+    },
+    "data-guard": {
+      "enabled": true,
+      "creditCardNumbers": true,
+      "usSocialSecurityNumbers": true,
+      "maskData": true,
+      "enforcementMode": "ignore-urls-in-list"
+    },
+    "ip-intelligence": {
+      "enabled": true,
+      "ipIntelligenceCategories": [
+        { "category": "Anonymous Proxy", "alarm": true, "block": true },
+        { "category": "Tor Proxies", "alarm": true, "block": true },
+        { "category": "Scanners", "alarm": true, "block": true },
+        { "category": "Web Attacks", "alarm": true, "block": true },
+        { "category": "BotNets", "alarm": true, "block": true },
+        { "category": "Cloud-based Services", "alarm": true, "block": false }
+      ]
+    },
+    "open-api-files": [ { "link": "https://internal.example.com/specs/partner-api-v2.yaml" } ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "_comment": "Agentic Adversary Readiness: global log receiver (control XC-LOG-01). Streams request and security event logs to a SIEM over HTTPS. Reference template for POST /api/config/namespaces/shared/global_log_receivers. Replace the endpoint and store the token as a blindfolded secret.",
+  "metadata": { "name": "siem-security-events", "namespace": "shared" },
+  "spec": {
+    "ns_all": {},
+    "security_events": {},
+    "http_receiver": {
+      "uri": "https://siem.example.com/services/collector/raw",
+      "auth_token": { "token": { "blindfold_secret_info": { "location": "string:///<blindfolded token>" } } },
+      "compression": { "compression_gzip": {} },
+      "batch": { "timeout_seconds_default": {}, "max_events_disabled": {}, "max_bytes_disabled": {} },
+      "use_tls": { "verify_certificate": {}, "verify_hostname": {}, "no_ca": {}, "mtls_disabled": {} }
+    }
+  }
+}
